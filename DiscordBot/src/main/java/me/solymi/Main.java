@@ -25,6 +25,7 @@ public class Main {
                 GatewayIntent.MESSAGE_CONTENT);
 
         builder.addEventListeners(new MyListener());
+        builder.addEventListeners(new MyAudioSender());
 
         builder.build();
     }
