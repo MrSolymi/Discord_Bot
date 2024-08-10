@@ -14,22 +14,40 @@ java {
 
 repositories {
     mavenCentral()
+    maven { url 'https://maven.lavalink.dev/releases' }
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.9.1')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-
-    implementation("ch.qos.logback:logback-classic:1.5.6")
-    implementation("net.dv8tion:JDA:5.0.2") { // replace $version with the latest version
+    //testImplementation platform('org.junit:junit-bom:5.9.1')
+    //implementation("ch.qos.logback:logback-classic:1.5.6")
+    //implementation("net.dv8tion:JDA:5.0.2") { // replace $version with the latest version
         // Optionally disable audio natives to reduce jar size by excluding `opus-java`
         // Gradle DSL:
         // exclude module: 'opus-java'
         // Kotlin DSL:
         // exclude(module="opus-java")
-    }
+    //}
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation platform(group: 'org.junit', name: 'junit-bom', version: '5.9.1')
+
+    implementation group: 'ch.qos.logback',     name: 'logback-classic',    version: '1.5.6'
+    implementation group: 'net.dv8tion',        name: 'JDA',                version: '5.0.2'
+    implementation group: 'dev.arbjerg',        name: 'lavalink-client',    version: '3.0.0'
 }
 
 test {
     useJUnitPlatform()
 }
+
+shadowJar {
+    archiveClassifier.set('')
+    archiveVersion.set('')
+
+    manifest {
+        attributes('Main-Class': 'me.solymi.Main')
+    }
+}
+
+jar.enabled = false
+assemble.dependsOn(shadowJar)

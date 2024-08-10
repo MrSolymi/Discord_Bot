@@ -38,12 +38,13 @@ public class MyAudioSender extends ListenerAdapter implements AudioSendHandler {
                 VoiceChannel voiceChannel = Objects.requireNonNull(member.getVoiceState().getChannel()).asVoiceChannel();
 
                 // join voice channel
-                guild.getAudioManager().openAudioConnection(voiceChannel);
+                //guild.getAudioManager().openAudioConnection(voiceChannel);
+                event.getJDA().getDirectAudioController().connect(voiceChannel);
             }
         }
         else if (message.equals("!leave")) {
             // leave voice channel
-            guild.getAudioManager().closeAudioConnection();
+            event.getJDA().getDirectAudioController().disconnect(guild);
         }
 
     }
