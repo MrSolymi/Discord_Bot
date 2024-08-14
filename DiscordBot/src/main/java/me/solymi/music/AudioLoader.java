@@ -2,13 +2,17 @@ package me.solymi.music;
 
 import dev.arbjerg.lavalink.client.AbstractAudioLoadResultHandler;
 import dev.arbjerg.lavalink.client.player.*;
+import me.solymi.Bot;
 import me.solymi.UserData;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class AudioLoader extends AbstractAudioLoadResultHandler {
+    private static final Logger LOG = LoggerFactory.getLogger(Bot.class);
     private final SlashCommandInteractionEvent event;
     private final MusicManager musicManager;
 

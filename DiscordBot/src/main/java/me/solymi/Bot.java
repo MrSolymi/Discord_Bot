@@ -11,6 +11,10 @@ import dev.arbjerg.lavalink.client.loadbalancing.RegionGroup;
 import dev.arbjerg.lavalink.client.loadbalancing.builtin.VoiceRegionPenaltyProvider;
 import dev.arbjerg.lavalink.libraries.jda.JDAVoiceUpdateListener;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
+import dev.lavalink.youtube.clients.AndroidTestsuite;
+import dev.lavalink.youtube.clients.Music;
+import dev.lavalink.youtube.clients.Web;
+import dev.lavalink.youtube.clients.skeleton.Client;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
@@ -41,8 +45,6 @@ public class Bot {
 
         listener = new Listener(client);
 
-        YoutubeAudioSourceManager youtubeAudioSourceManager = new YoutubeAudioSourceManager(true);
-
         final var builder = JDABuilder.createDefault(TOKEN);
         builder.setVoiceDispatchInterceptor(new JDAVoiceUpdateListener(client));
         builder.enableIntents(GatewayIntent.GUILD_VOICE_STATES); // GatewayIntent.MESSAGE_CONTENT
@@ -50,23 +52,6 @@ public class Bot {
         builder.addEventListeners(listener);
         builder.build().awaitReady();
 
-//        builder.build().updateCommands().queue();
-//
-//        try {
-//            Thread.sleep(3000); // 3 seconds
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-
-//        builder.build().updateCommands().addCommands(
-//                Commands.slash("ping", "Pong!"),
-//                Commands.slash("hello", "Hello!"),
-//                Commands.slash("join", "Join voice channel"),
-//                Commands.slash("leave", "Leave voice channel"),
-//                Commands.slash("play", "Play a song")
-//        ).queue();
-//
-//        System.out.println("Bot is ready!");
     }
 
     private void registerLavalinkNodes() {
