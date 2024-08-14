@@ -8,7 +8,9 @@ import dev.arbjerg.lavalink.client.event.EmittedEvent;
 import dev.arbjerg.lavalink.client.event.StatsEvent;
 import dev.arbjerg.lavalink.client.event.TrackStartEvent;
 import dev.arbjerg.lavalink.client.loadbalancing.RegionGroup;
+import dev.arbjerg.lavalink.client.loadbalancing.builtin.VoiceRegionPenaltyProvider;
 import dev.arbjerg.lavalink.libraries.jda.JDAVoiceUpdateListener;
+import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
@@ -19,39 +21,52 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Bot {
+    private static final Logger LOG = LoggerFactory.getLogger(Bot.class);
     private final LavalinkClient client;
+    private final Listener listener;
+
     public Bot() throws Exception {
         final var TOKEN = loadTokenFromEnvFile();
-        //System.out.println(TOKEN);
 
         client = new LavalinkClient(Helpers.getUserIdFromToken(TOKEN));
 
-
-//        JDABuilder builder = JDABuilder.createDefault(TOKEN,
-//                GatewayIntent.DIRECT_MESSAGES,
-//                GatewayIntent.SCHEDULED_EVENTS,
-//                GatewayIntent.GUILD_MESSAGES,
-//                GatewayIntent.GUILD_MEMBERS,
-//                GatewayIntent.GUILD_PRESENCES,
-//                GatewayIntent.GUILD_MESSAGE_REACTIONS,
-//                GatewayIntent.GUILD_VOICE_STATES,
-//                GatewayIntent.GUILD_EMOJIS_AND_STICKERS,
-//                GatewayIntent.MESSAGE_CONTENT);
-
-        JDABuilder builder = JDABuilder.createDefault(TOKEN);
-
-        builder.setVoiceDispatchInterceptor(new JDAVoiceUpdateListener(client));
-        builder.enableIntents(GatewayIntent.GUILD_VOICE_STATES, GatewayIntent.MESSAGE_CONTENT);
-        builder.enableCache(CacheFlag.VOICE_STATE);
+        client.getLoadBalancer().addPenaltyProvider(new VoiceRegionPenaltyProvider());
 
         registerLavalinkListeners();
         registerLavalinkNodes();
 
-        builder.addEventListeners(new MyListener());
-        builder.addEventListeners(new MyAudioSender());
+        listener = new Listener(client);
 
+        YoutubeAudioSourceManager youtubeAudioSourceManager = new YoutubeAudioSourceManager(true);
+
+        final var builder = JDABuilder.createDefault(TOKEN);
+        builder.setVoiceDispatchInterceptor(new JDAVoiceUpdateListener(client));
+        builder.enableIntents(GatewayIntent.GUILD_VOICE_STATES); // GatewayIntent.MESSAGE_CONTENT
+        builder.enableCache(CacheFlag.VOICE_STATE);
+        builder.addEventListeners(listener);
         builder.build().awaitReady();
+
+//        builder.build().updateCommands().queue();
+//
+//        try {
+//            Thread.sleep(3000); // 3 seconds
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+
+//        builder.build().updateCommands().addCommands(
+//                Commands.slash("ping", "Pong!"),
+//                Commands.slash("hello", "Hello!"),
+//                Commands.slash("join", "Join voice channel"),
+//                Commands.slash("leave", "Leave voice channel"),
+//                Commands.slash("play", "Play a song")
+//        ).queue();
+//
+//        System.out.println("Bot is ready!");
     }
 
     private void registerLavalinkNodes() {
@@ -63,7 +78,7 @@ public class Bot {
                 RegionGroup.EUROPE
             ),*/
 
-                client.addNode(new NodeOptions.Builder().setName("Testnode")
+                client.addNode(new NodeOptions.Builder().setName("Node")
                         .setServerUri(URI.create("ws://192.168.0.94:2333"))
                         .setPassword("youshallnotpass")
                         .setRegionFilter(RegionGroup.EUROPE)
@@ -87,8 +102,8 @@ public class Bot {
         client.on(dev.arbjerg.lavalink.client.event.ReadyEvent.class).subscribe((event) -> {
             final LavalinkNode node = event.getNode();
 
-            System.out.printf(
-                    "Node '%s' is ready, session id is '%s'!%n",
+            LOG.info(
+                    "Node '{}' is ready, session id is '{}'",
                     node.getName(),
                     event.getSessionId()
             );
@@ -97,27 +112,40 @@ public class Bot {
         client.on(StatsEvent.class).subscribe((event) -> {
             final LavalinkNode node = event.getNode();
 
-            System.out.printf(
-                    "Node '%s' has stats, current players: %d/%d%n",
+            LOG.info(
+                    "Node '{}' has stats, current players: {}/{} (link count {})",
                     node.getName(),
                     event.getPlayingPlayers(),
-                    event.getPlayers()
+                    event.getPlayers(),
+                    client.getLinks().size()
             );
         });
 
         client.on(EmittedEvent.class).subscribe((event) -> {
             if (event instanceof TrackStartEvent) {
-                System.out.println("Is a track start event!");
+                LOG.info("Is a track start event!");
             }
 
             final var node = event.getNode();
 
-            System.out.printf(
-                    "Node '%s' emitted event: %s%n",
+            LOG.info(
+                    "Node '{}' emitted event: {}",
                     node.getName(),
                     event
             );
         });
+
+//        client.on(TrackStartEvent.class).subscribe((event) -> {
+//            Optional.ofNullable(listener.musicManagers.get(event.getGuildId())).ifPresent(
+//                    (mng) -> mng.scheduler.onTrackStart(event.getTrack())
+//            );
+//        });
+//
+//        client.on(TrackEndEvent.class).subscribe((event) -> {
+//            Optional.ofNullable(listener.musicManagers.get(event.getGuildId())).ifPresent(
+//                    (mng) -> mng.scheduler.onTrackEnd(event.getTrack(), event.getEndReason())
+//            );
+//        });
     }
 
     public static String loadTokenFromEnvFile() throws Exception {
