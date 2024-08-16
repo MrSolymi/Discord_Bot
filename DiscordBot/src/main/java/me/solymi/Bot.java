@@ -10,11 +10,7 @@ import dev.arbjerg.lavalink.client.event.TrackStartEvent;
 import dev.arbjerg.lavalink.client.loadbalancing.RegionGroup;
 import dev.arbjerg.lavalink.client.loadbalancing.builtin.VoiceRegionPenaltyProvider;
 import dev.arbjerg.lavalink.libraries.jda.JDAVoiceUpdateListener;
-import dev.lavalink.youtube.YoutubeAudioSourceManager;
-import dev.lavalink.youtube.clients.AndroidTestsuite;
-import dev.lavalink.youtube.clients.Music;
-import dev.lavalink.youtube.clients.Web;
-import dev.lavalink.youtube.clients.skeleton.Client;
+import me.solymi.commands.*;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
@@ -31,27 +27,35 @@ import org.slf4j.LoggerFactory;
 public class Bot {
     private static final Logger LOG = LoggerFactory.getLogger(Bot.class);
     private final LavalinkClient client;
-    private final Listener listener;
+    private final CommandManager manager;
 
     public Bot() throws Exception {
         final var TOKEN = loadTokenFromEnvFile();
 
-        client = new LavalinkClient(Helpers.getUserIdFromToken(TOKEN));
+        final var builder = JDABuilder.createDefault(TOKEN);
 
+        client = new LavalinkClient(Helpers.getUserIdFromToken(TOKEN));
         client.getLoadBalancer().addPenaltyProvider(new VoiceRegionPenaltyProvider());
 
         registerLavalinkListeners();
         registerLavalinkNodes();
 
-        listener = new Listener(client);
-
-        final var builder = JDABuilder.createDefault(TOKEN);
         builder.setVoiceDispatchInterceptor(new JDAVoiceUpdateListener(client));
         builder.enableIntents(GatewayIntent.GUILD_VOICE_STATES); // GatewayIntent.MESSAGE_CONTENT
         builder.enableCache(CacheFlag.VOICE_STATE);
-        builder.addEventListeners(listener);
+
+        manager = new CommandManager();
+        manager.addCommand(new Hello());
+        manager.addCommand(new Join());
+        manager.addCommand(new Leave());
+        manager.addCommand(new Node(client));
+        manager.addCommand(new Play(client));
+
+
+        builder.addEventListeners(manager);
         builder.build().awaitReady();
 
+        LOG.info("Bot is ready!");
     }
 
     private void registerLavalinkNodes() {
@@ -139,7 +143,7 @@ public class Bot {
 
             return lines.getFirst().split("=")[1];
         } catch (FileNotFoundException e) {
-            System.out.println("token.env file not found!");
+            LOG.warn("token.env file not found!");
             throw e;
         }
     }
