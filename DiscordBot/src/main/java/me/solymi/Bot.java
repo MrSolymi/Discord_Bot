@@ -1,150 +1,62 @@
 package me.solymi;
 
-import dev.arbjerg.lavalink.client.Helpers;
-import dev.arbjerg.lavalink.client.LavalinkClient;
-import dev.arbjerg.lavalink.client.LavalinkNode;
-import dev.arbjerg.lavalink.client.NodeOptions;
-import dev.arbjerg.lavalink.client.event.EmittedEvent;
-import dev.arbjerg.lavalink.client.event.StatsEvent;
-import dev.arbjerg.lavalink.client.event.TrackStartEvent;
-import dev.arbjerg.lavalink.client.loadbalancing.RegionGroup;
-import dev.arbjerg.lavalink.client.loadbalancing.builtin.VoiceRegionPenaltyProvider;
-import dev.arbjerg.lavalink.libraries.jda.JDAVoiceUpdateListener;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
+import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
+import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
+import com.sedmelluq.discord.lavaplayer.source.bandcamp.BandcampAudioSourceManager;
+import com.sedmelluq.discord.lavaplayer.source.beam.BeamAudioSourceManager;
+import com.sedmelluq.discord.lavaplayer.source.http.HttpAudioSourceManager;
+import com.sedmelluq.discord.lavaplayer.source.local.LocalAudioSourceManager;
+import com.sedmelluq.discord.lavaplayer.source.soundcloud.SoundCloudAudioSourceManager;
+import com.sedmelluq.discord.lavaplayer.source.twitch.TwitchStreamAudioSourceManager;
+import com.sedmelluq.discord.lavaplayer.source.vimeo.VimeoAudioSourceManager;
+import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import me.solymi.commands.*;
+import me.solymi.io.Config;
+import me.solymi.listeners.CommandListener;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
-
-import java.io.FileNotFoundException;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+
 public class Bot {
     private static final Logger LOG = LoggerFactory.getLogger(Bot.class);
-    private final LavalinkClient client;
-    private final CommandManager manager;
+    private final JDA jda;
+    private final Config config;
+    private final CommandListener commandListener;
 
     public Bot() throws Exception {
-        final var TOKEN = loadTokenFromEnvFile();
+        config = new Config();
 
-        final var builder = JDABuilder.createDefault(TOKEN);
+        final JDABuilder jdaBuilder = JDABuilder.createDefault(config.getToken());
 
-        client = new LavalinkClient(Helpers.getUserIdFromToken(TOKEN));
-        client.getLoadBalancer().addPenaltyProvider(new VoiceRegionPenaltyProvider());
+        jdaBuilder.enableIntents(GatewayIntent.GUILD_VOICE_STATES, GatewayIntent.MESSAGE_CONTENT); // GatewayIntent.MESSAGE_CONTENT
+        jdaBuilder.enableCache(CacheFlag.VOICE_STATE);
 
-        registerLavalinkListeners();
-        registerLavalinkNodes();
+        commandListener = new CommandListener();
+        commandListener.addCommand(new Hello());
+        commandListener.addCommand(new Join());
+        commandListener.addCommand(new Leave());
+        commandListener.addCommand(new Play());
+        commandListener.addCommand(new Help());
+        jdaBuilder.addEventListeners(commandListener);
 
-        builder.setVoiceDispatchInterceptor(new JDAVoiceUpdateListener(client));
-        builder.enableIntents(GatewayIntent.GUILD_VOICE_STATES); // GatewayIntent.MESSAGE_CONTENT
-        builder.enableCache(CacheFlag.VOICE_STATE);
+        jda = jdaBuilder.build();
 
-        manager = new CommandManager();
-        manager.addCommand(new Hello());
-        manager.addCommand(new Join());
-        manager.addCommand(new Leave());
-        manager.addCommand(new Node(client));
-        manager.addCommand(new Play(client));
-
-
-        builder.addEventListeners(manager);
-        builder.build().awaitReady();
+        jda.awaitReady();
 
         LOG.info("Bot is ready!");
     }
 
-    private void registerLavalinkNodes() {
-        List.of(
-            /*client.addNode(
-                "Testnode",
-                URI.create("ws://localhost:2333"),
-                "youshallnotpass",
-                RegionGroup.EUROPE
-            ),*/
-
-                client.addNode(new NodeOptions.Builder().setName("Node")
-                        .setServerUri(URI.create("ws://192.168.0.94:2333"))
-                        .setPassword("youshallnotpass")
-                        .setRegionFilter(RegionGroup.EUROPE)
-                        .setHttpTimeout(5000L)
-                        .build()
-                )
-        ).forEach((node) -> {
-            node.on(TrackStartEvent.class).subscribe((event) -> {
-                final LavalinkNode node1 = event.getNode();
-
-                System.out.printf(
-                        "%s: track started: %s%n",
-                        node1.getName(),
-                        event.getTrack().getInfo()
-                );
-            });
-        });
+    public JDA getJda() {
+        return jda;
     }
 
-    private void registerLavalinkListeners() {
-        client.on(dev.arbjerg.lavalink.client.event.ReadyEvent.class).subscribe((event) -> {
-            final LavalinkNode node = event.getNode();
-
-            LOG.info(
-                    "Node '{}' is ready, session id is '{}'",
-                    node.getName(),
-                    event.getSessionId()
-            );
-        });
-
-        client.on(StatsEvent.class).subscribe((event) -> {
-            final LavalinkNode node = event.getNode();
-
-            LOG.info(
-                    "Node '{}' has stats, current players: {}/{} (link count {})",
-                    node.getName(),
-                    event.getPlayingPlayers(),
-                    event.getPlayers(),
-                    client.getLinks().size()
-            );
-        });
-
-        client.on(EmittedEvent.class).subscribe((event) -> {
-            if (event instanceof TrackStartEvent) {
-                LOG.info("Is a track start event!");
-            }
-
-            final var node = event.getNode();
-
-            LOG.info(
-                    "Node '{}' emitted event: {}",
-                    node.getName(),
-                    event
-            );
-        });
-
-//        client.on(TrackStartEvent.class).subscribe((event) -> {
-//            Optional.ofNullable(listener.musicManagers.get(event.getGuildId())).ifPresent(
-//                    (mng) -> mng.scheduler.onTrackStart(event.getTrack())
-//            );
-//        });
-//
-//        client.on(TrackEndEvent.class).subscribe((event) -> {
-//            Optional.ofNullable(listener.musicManagers.get(event.getGuildId())).ifPresent(
-//                    (mng) -> mng.scheduler.onTrackEnd(event.getTrack(), event.getEndReason())
-//            );
-//        });
-    }
-
-    public static String loadTokenFromEnvFile() throws Exception {
-        try {
-            var lines = Files.readAllLines(Path.of("token.env"));
-
-            return lines.getFirst().split("=")[1];
-        } catch (FileNotFoundException e) {
-            LOG.warn("token.env file not found!");
-            throw e;
-        }
+    public Config getConfig() {
+        return config;
     }
 }
