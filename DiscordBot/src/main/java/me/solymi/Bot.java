@@ -8,8 +8,6 @@ import net.dv8tion.jda.api.JDABuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-
 public class Bot {
     private static final Logger LOG = LoggerFactory.getLogger(Bot.class);
     private final Config config;
@@ -28,6 +26,8 @@ public class Bot {
         commandListener.addCommand(new Leave());
         commandListener.addCommand(new Help());
         commandListener.addCommand(new Play());
+        commandListener.addCommand(new Pause());
+        commandListener.addCommand(new Skip());
 
         jda.addEventListener(commandListener);
 

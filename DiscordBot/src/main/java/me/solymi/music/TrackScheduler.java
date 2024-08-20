@@ -10,6 +10,7 @@ import me.solymi.utilities.SongInfo;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
 public class TrackScheduler extends AudioEventAdapter {
@@ -40,7 +41,14 @@ public class TrackScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
-        super.onTrackEnd(player, track, endReason);
+        if (!queue.isEmpty()){
+            SongInfo q = queue.poll();
+            player.startTrack(q.getTrack(), false);
+            nowPlayingUser = q.getRequester();
+            if (isLooping) {
+                queue.offer(q);
+            }
+        }
     }
 
     @Override
@@ -70,5 +78,13 @@ public class TrackScheduler extends AudioEventAdapter {
         } else {
             nowPlayingUser = user;
         }
+    }
+
+    public BlockingQueue<SongInfo> getQueue() {
+        return queue;
+    }
+
+    public AudioPlayer getPlayer() {
+        return player;
     }
 }

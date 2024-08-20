@@ -73,6 +73,5 @@ public class Play implements ICommand {
 
         PlayerManager playerManager = PlayerManager.get();
         playerManager.play(event.getGuild(), query, event, priority);
-
     }
 }

@@ -53,7 +53,10 @@ public class PlayerManager {
 
             @Override
             public void playlistLoaded(AudioPlaylist playlist) {
-
+                for (AudioTrack track : playlist.getTracks()) {
+                    guildMusicManager.getTrackScheduler().queue(track, event.getUser(), priority);
+                }
+                event.reply("Added " + playlist.getTracks().size() + " songs to the queue").queue();
             }
 
             @Override
