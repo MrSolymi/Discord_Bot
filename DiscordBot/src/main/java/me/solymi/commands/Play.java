@@ -2,7 +2,6 @@ package me.solymi.commands;
 
 import me.solymi.interfaces.ICommand;
 import me.solymi.music.PlayerManager;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.GuildVoiceState;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -10,6 +9,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -40,14 +40,10 @@ public class Play implements ICommand {
 
     @Override
     public void execute(SlashCommandInteractionEvent event) {
-        EmbedBuilder embedBuilder = new EmbedBuilder();
-        embedBuilder.setColor(0x820000);
-
         Member member = event.getMember();
         GuildVoiceState memberVoiceState = member.getVoiceState();
         if (!memberVoiceState.inAudioChannel()) {
-            embedBuilder.setTitle("You need to be in a voice channel to use this command");
-            event.replyEmbeds(embedBuilder.build()).queue();
+            event.reply("You need to be in a voice channel to use this command").queue();
             return;
         }
 
@@ -57,8 +53,7 @@ public class Play implements ICommand {
             event.getGuild().getAudioManager().openAudioConnection(memberVoiceState.getChannel());
         } else {
             if(!memberVoiceState.getChannel().equals(selfVoiceState.getChannel())) {
-                embedBuilder.setTitle("You need to be in the same voice channel as me to use this command");
-                event.replyEmbeds(embedBuilder.build()).queue();
+                event.reply("You need to be in the same voice channel as me to use this command").queue();
                 return;
             }
         }
@@ -78,5 +73,6 @@ public class Play implements ICommand {
 
         PlayerManager playerManager = PlayerManager.get();
         playerManager.play(event.getGuild(), query, event, priority);
+
     }
 }
